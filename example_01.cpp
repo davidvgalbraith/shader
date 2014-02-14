@@ -86,13 +86,59 @@ void myReshape(int w, int h) {
   gluOrtho2D(0, viewport.w, 0, viewport.h);
 
 }
+//square
+float sq(float x) {
+  return x * x;
+}
+//normalize v
+vector<float> normalize(vector<float> v) {
+  float norm = 0.0;
+  for (int k = 0; k < v.size(); k++) {
+    norm += sq(v[k]);
+  }
+  norm = sqrt(norm);
+  vector<float> resp;
+  resp.push_back(v[0] / norm);
+  resp.push_back(v[1] / norm);
+  resp.push_back(v[2] / norm);
+  return resp;
+}
 
+//dot product
+float dot(vector<float> n, vector<float> l) {
+  float resp = 0.0;
+  for (int k = 0; k < n.size(); k++) {
+    resp += n[k] * l[k];
+  }
+  return resp;
+}
 
 //****************************************************
 // A routine to set a pixel by drawing a GL point.  This is not a
 // general purpose routine as it assumes a lot of stuff specific to
 // this example.
 //****************************************************
+
+//give the vector consisting of the diffuse shading component given
+//position, lights, and diffusion coefficients
+vector<float> handleDiffuse(vector<float> coeff, vector<float> n, vector<float> lights) {
+  vector<float> resp;
+  float red = 0.0;
+  float green = 0.0;
+  float blue = 0.0;
+  for (int k = 0; k < lights.size(); k += 6) {
+    vector<float> l;
+    l.push_back(lights[k]); l.push_back(lights[k+1]); l.push_back(lights[k+2]);
+    float prod = dot(normalize(n), normalize(l));
+    red += prod * coeff[0] * lights[k + 3];
+    green += prod * coeff[1] * lights[k + 4];
+    blue += prod * coeff[2] * lights[k + 5];
+  }
+  resp.push_back(red);
+  resp.push_back(green);
+  resp.push_back(blue);
+  return resp;
+}
 
 void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
   glColor3f(r, g, b);
@@ -141,10 +187,8 @@ void circle(float centerX, float centerY, float radius) {
         // This is the front-facing Z coordinate
         float z = sqrt(radius*radius-dist*dist);
 	vector<float> nl;
-	nl.push_back(x);
-	nl.push_back(y);
-	nl.push_back(z);
-	vector<float> diffuse = handleDiffuse(kd, pl, 
+	nl.push_back(x/radius); nl.push_back(y/radius); nl.push_back(z/radius);
+	vector<float> diffuse = handleDiffuse(kd, nl, pl); 
         //setPixel(i,j, 1.0, 0.0, 0.0);
 
         // This is amusing, but it assumes negative color values are treated reasonably.
