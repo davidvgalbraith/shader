@@ -146,9 +146,9 @@ vector<float> handleDiffuse(vector<float> coeff, vector<float> n, vector<float> 
     //float rsq = sq(dist(l, n));
 
     float prod = dot(normalize(n), normalize(l));
-    red += prod * coeff[0] * points[k + 3];
-    green += prod * coeff[1] * points[k + 4];
-    blue += prod * coeff[2] * points[k + 5];
+    red += max(prod * coeff[0] * points[k + 3], 0);
+    green += max(prod * coeff[1] * points[k + 4], 0);
+    blue += max(prod * coeff[2] * points[k + 5], 0);
   }
   resp.push_back(max(red, 0.0));
   resp.push_back(max(green, 0.0));
@@ -183,14 +183,14 @@ vector<float> handleSpecular(vector<float> coeff, vector<float> power, vector<fl
     v.push_back(0.0);
     v.push_back(0.0);
     v.push_back(1.0);
-    float prod = pow(dot(normalize(r), normalize(v)), power[0]);
-    red += prod * coeff[0] * points[k + 3];
-    green += prod * coeff[1] * points[k + 4];
-    blue += prod * coeff[2] * points[k + 5];
+    float prod = pow(max(dot(normalize(r), normalize(v)), 0), power[0]);
+    red += max(prod * coeff[0] * points[k + 3], 0);
+    green += max(prod * coeff[1] * points[k + 4], 0);
+    blue += max(prod * coeff[2] * points[k + 5], 0);
   }
-  resp.push_back(max(red, 0.0));
-  resp.push_back(max(green, 0.0));
-  resp.push_back(max(blue, 0.0));
+  resp.push_back(red);
+  resp.push_back(green);
+  resp.push_back(blue);
   return resp;
 }
 
@@ -201,9 +201,9 @@ vector<float> handleAmbient(vector<float> coeff, vector<float> points) {
   float green = 0.0;
   float blue = 0.0;
   for (int k = 0; k < points.size(); k += 6) {
-    red += coeff[0] * points[k + 3];
-    green += coeff[1] * points[k + 4];
-    blue += coeff[2] * points[k + 5];
+    red += max(coeff[0] * points[k + 3], 0);
+    green += max(coeff[1] * points[k + 4], 0);
+    blue += max(coeff[2] * points[k + 5], 0);
   }
   resp.push_back(max(red, 0.0));
   resp.push_back(max(green, 0.0));
@@ -262,9 +262,7 @@ void circle(float centerX, float centerY, float radius) {
 	vector<float> diffuse = handleDiffuse(kd, nl, pl);
 	vector<float> spec = handleSpecular(ks, sp, nl, pl);
 	vector<float> amb = handleAmbient(ka, pl);
-        //setPixel(i,j, 1.0, 0.0, 0.0);
 
-        // This is amusing, but it assumes negative color values are treated reasonably.
 	setPixel(i,j, diffuse[0] + spec[0] + amb[0], diffuse[1] + spec[1] + amb[1], diffuse[2] + spec[2] + amb[2]);
       }
 
@@ -332,8 +330,24 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-
-
+  if (ka.size() == 0) {
+    ka.push_back(0.0);
+    ka.push_back(0.0);
+    ka.push_back(0.0);
+  }
+  if (ks.size() == 0) {
+    ks.push_back(0.0);
+    ks.push_back(0.0);
+    ks.push_back(0.0);
+  }
+  if (kd.size() == 0) {
+    kd.push_back(0.0);
+    kd.push_back(0.0);
+    kd.push_back(0.0);
+  }
+  if (sp.size() == 0) {
+    sp.push_back(1.0);
+  }
   //This initializes glut
   glutInit(&argc, argv);
 
