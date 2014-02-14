@@ -133,22 +133,77 @@ float max(float a, float b) {
 }
 //give the vector consisting of the diffuse shading component given
 //position, lights, and diffusion coefficients
-vector<float> handleDiffuse(vector<float> coeff, vector<float> n, vector<float> lights) {
+vector<float> handleDiffuse(vector<float> coeff, vector<float> n, vector<float> points) {
   vector<float> resp;
   float red = 0.0;
   float green = 0.0;
   float blue = 0.0;
-  for (int k = 0; k < lights.size(); k += 6) {
+  for (int k = 0; k < points.size(); k += 6) {
     vector<float> l;
-    l.push_back(lights[k]); l.push_back(lights[k+1]); l.push_back(lights[k+2]);
+    l.push_back(points[k]); l.push_back(points[k+1]); l.push_back(points[k+2]);
 
     //nobody cares about falloff
     //float rsq = sq(dist(l, n));
 
     float prod = dot(normalize(n), normalize(l));
-    red += prod * coeff[0] * lights[k + 3];
-    green += prod * coeff[1] * lights[k + 4];
-    blue += prod * coeff[2] * lights[k + 5];
+    red += prod * coeff[0] * points[k + 3];
+    green += prod * coeff[1] * points[k + 4];
+    blue += prod * coeff[2] * points[k + 5];
+  }
+  resp.push_back(max(red, 0.0));
+  resp.push_back(max(green, 0.0));
+  resp.push_back(max(blue, 0.0));
+  return resp;
+}
+
+//give the fancy specular r-vector
+vector<float> calcr(vector<float> l, vector<float> n) {
+  vector<float> resp;
+  float dotty = dot(l, n);
+  for (int k = 0; k < l.size(); k++) {
+    resp.push_back(-1.0 * l[k] + dotty * 2 * n[k]);
+  }
+  return resp;
+}
+//give the vector consisting of specular shading component given
+//position, lights, power, and specular coefficients
+
+vector<float> handleSpecular(vector<float> coeff, vector<float> power, vector<float> n, vector<float> points) {
+  vector<float> resp;
+  float red = 0.0;
+  float green = 0.0;
+  float blue = 0.0;
+  for (int k = 0; k < points.size(); k += 6) {
+    vector<float> l;
+    l.push_back(points[k]); l.push_back(points[k+1]); l.push_back(points[k+2]);
+    vector<float> r = calcr(l, n);
+    //nobody cares about falloff
+    //float rsq = sq(dist(l, n));
+    vector<float> v;
+    v.push_back(0.0);
+    v.push_back(0.0);
+    v.push_back(1.0);
+    float prod = pow(dot(normalize(r), normalize(v)), power[0]);
+    red += prod * coeff[0] * points[k + 3];
+    green += prod * coeff[1] * points[k + 4];
+    blue += prod * coeff[2] * points[k + 5];
+  }
+  resp.push_back(max(red, 0.0));
+  resp.push_back(max(green, 0.0));
+  resp.push_back(max(blue, 0.0));
+  return resp;
+}
+
+//returns the ambient light vector
+vector<float> handleAmbient(vector<float> coeff, vector<float> points) {
+  vector<float> resp;
+  float red = 0.0;
+  float green = 0.0;
+  float blue = 0.0;
+  for (int k = 0; k < points.size(); k += 6) {
+    red += coeff[0] * points[k + 3];
+    green += coeff[1] * points[k + 4];
+    blue += coeff[2] * points[k + 5];
   }
   resp.push_back(max(red, 0.0));
   resp.push_back(max(green, 0.0));
@@ -204,11 +259,13 @@ void circle(float centerX, float centerY, float radius) {
         float z = sqrt(radius*radius-dist*dist);
 	vector<float> nl;
 	nl.push_back(x/radius); nl.push_back(y/radius); nl.push_back(z/radius);
-	vector<float> diffuse = handleDiffuse(kd, nl, pl); 
+	vector<float> diffuse = handleDiffuse(kd, nl, pl);
+	vector<float> spec = handleSpecular(ks, sp, nl, pl);
+	vector<float> amb = handleAmbient(ka, pl);
         //setPixel(i,j, 1.0, 0.0, 0.0);
 
         // This is amusing, but it assumes negative color values are treated reasonably.
-         setPixel(i,j, diffuse[0], diffuse[1], diffuse[2]);
+	setPixel(i,j, diffuse[0] + spec[0] + amb[0], diffuse[1] + spec[1] + amb[1], diffuse[2] + spec[2] + amb[2]);
       }
 
 
@@ -267,7 +324,7 @@ int main(int argc, char *argv[]) {
    if (s.compare("-pl") == 0) {
       for (int a = 0; a < 6; a++) {
 	pl.push_back(atof(argv[++k]));
-      }
+     }
     }
    if (s.compare("-dl") == 0) {
       for (int a = 0; a < 6; a++) {
