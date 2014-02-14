@@ -133,23 +133,33 @@ float max(float a, float b) {
 }
 //give the vector consisting of the diffuse shading component given
 //position, lights, and diffusion coefficients
-vector<float> handleDiffuse(vector<float> coeff, vector<float> n, vector<float> points) {
+vector<float> handleDiffuse(vector<float> coeff, vector<float> n, vector<float> points, vector<float> dl) {
   vector<float> resp;
   float red = 0.0;
   float green = 0.0;
   float blue = 0.0;
+
+  //point sources
   for (int k = 0; k < points.size(); k += 6) {
     vector<float> l;
-    l.push_back(points[k]); l.push_back(points[k+1]); l.push_back(points[k+2]);
-
-    //nobody cares about falloff
-    //float rsq = sq(dist(l, n));
-
+    l.push_back(points[k] - n[0]); l.push_back(points[k+1] - n[1]); l.push_back(points[k+2] - n[2]);
     float prod = dot(normalize(n), normalize(l));
     red += max(prod * coeff[0] * points[k + 3], 0);
     green += max(prod * coeff[1] * points[k + 4], 0);
     blue += max(prod * coeff[2] * points[k + 5], 0);
   }
+
+  //direction lights
+  for (int kk = 0; kk < dl.size(); kk += 6) {
+    vector<float> l;
+    l.push_back(dl[kk]); l.push_back(dl[kk+1]); l.push_back(dl[kk+2]);
+    float prod = dot(normalize(n), normalize(l));
+    red += max(prod * coeff[0] * dl[kk + 3], 0);
+    green += max(prod * coeff[1] * dl[kk + 4], 0);
+    blue += max(prod * coeff[2] * dl[kk + 5], 0);
+  }
+
+
   resp.push_back(max(red, 0.0));
   resp.push_back(max(green, 0.0));
   resp.push_back(max(blue, 0.0));
@@ -168,17 +178,15 @@ vector<float> calcr(vector<float> l, vector<float> n) {
 //give the vector consisting of specular shading component given
 //position, lights, power, and specular coefficients
 
-vector<float> handleSpecular(vector<float> coeff, vector<float> power, vector<float> n, vector<float> points) {
+vector<float> handleSpecular(vector<float> coeff, vector<float> power, vector<float> n, vector<float> points, vector<float> dl) {
   vector<float> resp;
   float red = 0.0;
   float green = 0.0;
   float blue = 0.0;
   for (int k = 0; k < points.size(); k += 6) {
     vector<float> l;
-    l.push_back(points[k]); l.push_back(points[k+1]); l.push_back(points[k+2]);
+    l.push_back(points[k]-n[0]); l.push_back(points[k+1]-n[1]); l.push_back(points[k+2]-n[2]);
     vector<float> r = calcr(l, n);
-    //nobody cares about falloff
-    //float rsq = sq(dist(l, n));
     vector<float> v;
     v.push_back(0.0);
     v.push_back(0.0);
@@ -187,6 +195,20 @@ vector<float> handleSpecular(vector<float> coeff, vector<float> power, vector<fl
     red += max(prod * coeff[0] * points[k + 3], 0);
     green += max(prod * coeff[1] * points[k + 4], 0);
     blue += max(prod * coeff[2] * points[k + 5], 0);
+  }
+
+  for (int kk = 0; kk < points.size(); kk += 6) {
+    vector<float> l;
+    l.push_back(dl[kk]); l.push_back(dl[kk+1]); l.push_back(dl[kk+2]);
+    vector<float> r = calcr(l, n);
+    vector<float> v;
+    v.push_back(0.0);
+    v.push_back(0.0);
+    v.push_back(1.0);
+    float prod = pow(max(dot(normalize(r), normalize(v)), 0), power[0]);
+    red += max(prod * coeff[0] * dl[kk + 3], 0);
+    green += max(prod * coeff[1] * dl[kk + 4], 0);
+    blue += max(prod * coeff[2] * dl[kk + 5], 0);
   }
   resp.push_back(red);
   resp.push_back(green);
@@ -205,6 +227,13 @@ vector<float> handleAmbient(vector<float> coeff, vector<float> points) {
     green += max(coeff[1] * points[k + 4], 0);
     blue += max(coeff[2] * points[k + 5], 0);
   }
+
+  for (int kk = 0; kk < points.size(); kk += 6) {
+    red += max(coeff[0] * dl[kk + 3], 0);
+    green += max(coeff[1] * dl[kk + 4], 0);
+    blue += max(coeff[2] * dl[kk + 5], 0);
+  }
+
   resp.push_back(max(red, 0.0));
   resp.push_back(max(green, 0.0));
   resp.push_back(max(blue, 0.0));
@@ -259,8 +288,8 @@ void circle(float centerX, float centerY, float radius) {
         float z = sqrt(radius*radius-dist*dist);
 	vector<float> nl;
 	nl.push_back(x/radius); nl.push_back(y/radius); nl.push_back(z/radius);
-	vector<float> diffuse = handleDiffuse(kd, nl, pl);
-	vector<float> spec = handleSpecular(ks, sp, nl, pl);
+	vector<float> diffuse = handleDiffuse(kd, nl, pl, dl);
+	vector<float> spec = handleSpecular(ks, sp, nl, pl, dl);
 	vector<float> amb = handleAmbient(ka, pl);
 
 	setPixel(i,j, diffuse[0] + spec[0] + amb[0], diffuse[1] + spec[1] + amb[1], diffuse[2] + spec[2] + amb[2]);
@@ -326,10 +355,10 @@ int main(int argc, char *argv[]) {
     }
    if (s.compare("-dl") == 0) {
       for (int a = 0; a < 3; a++) {
-	pl.push_back(-1.0 * atof(argv[++k]));
+	dl.push_back(-1.0 * atof(argv[++k]));
       }
       for (int b = 0; b < 3; b++) {
-	pl.push_back(atof(argv[++k]));
+	dl.push_back(atof(argv[++k]));
       }
     }
   }
