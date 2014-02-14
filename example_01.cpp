@@ -1,4 +1,3 @@
-
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -112,13 +111,26 @@ float dot(vector<float> n, vector<float> l) {
   }
   return resp;
 }
-
+//distance between vectors
+float dist(vector<float> a, vector<float> b) {
+  float d = 0.0;
+  for (int k = 0; k < a.size(); k++) {
+    d += sq(a[k] - b[k]);
+  }
+  return sqrt(d);
+}
 //****************************************************
 // A routine to set a pixel by drawing a GL point.  This is not a
 // general purpose routine as it assumes a lot of stuff specific to
 // this example.
 //****************************************************
-
+float max(float a, float b) {
+  if (a > b) {
+    return a;
+  } else {
+    return b;
+  }
+}
 //give the vector consisting of the diffuse shading component given
 //position, lights, and diffusion coefficients
 vector<float> handleDiffuse(vector<float> coeff, vector<float> n, vector<float> lights) {
@@ -129,14 +141,18 @@ vector<float> handleDiffuse(vector<float> coeff, vector<float> n, vector<float> 
   for (int k = 0; k < lights.size(); k += 6) {
     vector<float> l;
     l.push_back(lights[k]); l.push_back(lights[k+1]); l.push_back(lights[k+2]);
+
+    //nobody cares about falloff
+    //float rsq = sq(dist(l, n));
+
     float prod = dot(normalize(n), normalize(l));
     red += prod * coeff[0] * lights[k + 3];
     green += prod * coeff[1] * lights[k + 4];
     blue += prod * coeff[2] * lights[k + 5];
   }
-  resp.push_back(red);
-  resp.push_back(green);
-  resp.push_back(blue);
+  resp.push_back(max(red, 0.0));
+  resp.push_back(max(green, 0.0));
+  resp.push_back(max(blue, 0.0));
   return resp;
 }
 
@@ -149,7 +165,7 @@ void setPixel(int x, int y, GLfloat r, GLfloat g, GLfloat b) {
 }
 
 //****************************************************
-// Draw a filled circle.  
+// Draw a shaded circle.  
 //****************************************************
 
 
@@ -192,7 +208,7 @@ void circle(float centerX, float centerY, float radius) {
         //setPixel(i,j, 1.0, 0.0, 0.0);
 
         // This is amusing, but it assumes negative color values are treated reasonably.
-         setPixel(i,j, x/radius, y/radius, z/radius );
+         setPixel(i,j, diffuse[0], diffuse[1], diffuse[2]);
       }
 
 
