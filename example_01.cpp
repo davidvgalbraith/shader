@@ -325,8 +325,11 @@ int main(int argc, char *argv[]) {
      }
     }
    if (s.compare("-dl") == 0) {
-      for (int a = 0; a < 6; a++) {
-	dl.push_back(atof(argv[++k]));
+      for (int a = 0; a < 3; a++) {
+	pl.push_back(-1.0 * atof(argv[++k]));
+      }
+      for (int b = 0; b < 3; b++) {
+	pl.push_back(atof(argv[++k]));
       }
     }
   }
